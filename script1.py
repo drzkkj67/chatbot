@@ -1,16 +1,42 @@
 import streamlit as st
 import g4f
 import time
+import os
 
 # ==============================================================================
 # 1. CONFIGURAÇÃO DA PÁGINA E ESTADOS GLOBAIS
 # ==============================================================================
 st.set_page_config(
-    page_title="PyChef Pro - Hub Gastronômico",
-    page_icon="🧑‍🍳",
+    page_title="PyChef Pro - Hub Gastronômico", 
+    page_icon="🧑‍🍳", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Funções para persistência do Livro de Receitas em arquivo real
+ARQUIVO_RECEITAS = "receitas_salvas.txt"
+
+def carregar_receitas():
+    receitas = {}
+    if os.path.exists(ARQUIVO_RECEITAS):
+        with open(ARQUIVO_RECEITAS, "r", encoding="utf-8") as f:
+            conteudo = f.read()
+            if conteudo:
+                blocos = conteudo.split("=== FIM DA RECEITA ===\n")
+                for bloco in blocos:
+                    if "TITULO:" in bloco and "CONTEUDO:" in bloco:
+                        try:
+                            partes = bloco.split("CONTEUDO:")
+                            titulo = partes[0].replace("TITULO:", "").strip()
+                            texto = partes[1].strip()
+                            receitas[titulo] = texto
+                        except:
+                            pass
+    return receitas
+
+def salvar_receita_no_arquivo(titulo, texto):
+    with open(ARQUIVO_RECEITAS, "a", encoding="utf-8") as f:
+        f.write(f"TITULO: {titulo}\nCONTEUDO:\n{texto}\n=== FIM DA RECEITA ===\n")
 
 # Inicialização de variáveis de configuração no Session State
 if "idioma" not in st.session_state:
@@ -23,8 +49,6 @@ if "modo_resposta" not in st.session_state:
     st.session_state.modo_resposta = "Detalhado"
 if "lista_compras" not in st.session_state:
     st.session_state.lista_compras = []
-if "receitas_salvas" not in st.session_state:
-    st.session_state.receitas_salvas = {}
 
 # ==============================================================================
 # DESIGN E CUSTOMIZAÇÃO DE CSS AVANÇADO
@@ -140,8 +164,8 @@ textos = {
         "aba_utilitarios": "⏱️ Temporizador",
         "aba_favoritas": "⭐ Libro de Recetas",
         "aba_config": "⚙️ Configuración",
-        "titulo_chat": "💬 Habla con el Chef",
-        "sub_chat": "Solicite recetas personalizadas o haga preguntas culinarias.",
+        "titulo_chat": "💬 Habla com o Chef",
+        "sub_chat": "Solicite receitas personalizadas ou faça perguntas culinárias.",
         "btn_limpar": "🗑️ Limpar Conversación",
         "chef_pensando": "El Chef está escribiendo tu receta...",
         "input_chat": "Pregúntale al Chef...",
@@ -157,8 +181,7 @@ txt = textos[st.session_state.idioma]
 
 if "messages" not in st.session_state or len(st.session_state.messages) == 0:
     st.session_state.messages = [
-        {"role": "system",
-         "content": f"Você é o PyChef Pro. Responda no idioma {st.session_state.idioma}. Modo de resposta: {st.session_state.modo_resposta}."},
+        {"role": "system", "content": f"Você é o PyChef Pro. Responda no idioma {st.session_state.idioma}. Modo de resposta: {st.session_state.modo_resposta}."},
         {"role": "assistant", "content": txt["boas_vindas"]}
     ]
 
@@ -169,18 +192,18 @@ with st.sidebar:
     st.markdown("<h1 style='text-align: center; font-size: 3.5rem;'>🧑‍🍳</h1>", unsafe_allow_html=True)
     st.markdown("<h2 style='text-align: center; margin-top: 0;'>PyChef Pro</h2>", unsafe_allow_html=True)
     st.divider()
-
+    
     st.subheader("🧠 IA Engine")
     modelo_selecionado = st.selectbox(
         "Model:", ["GPT-4o (Recomendado)", "GPT-4", "GPT-3.5"], index=0, label_visibility="collapsed"
     )
-
+    
     st.divider()
     st.subheader("🥑 Diet & Preferences")
     dieta = st.multiselect(
         "Filters:", ["Sem Glúten", "Sem Lactose", "Vegano", "Vegetariano", "Low Carb"], placeholder="No restrictions"
     )
-
+    
     st.divider()
     if st.button(txt["btn_limpar"], use_container_width=True, type="secondary"):
         st.session_state.messages = [
@@ -193,8 +216,7 @@ with st.sidebar:
 # 3. SISTEMA DE ABAS PRINCIPAIS ESTILIZADAS
 # ==============================================================================
 aba_chat, aba_compras, aba_financeiro, aba_utilitarios, aba_favoritas, aba_config = st.tabs([
-    txt["aba_chat"], txt["aba_compras"], txt["aba_financeiro"], txt["aba_utilitarios"], txt["aba_favoritas"],
-    txt["aba_config"]
+    txt["aba_chat"], txt["aba_compras"], txt["aba_financeiro"], txt["aba_utilitarios"], txt["aba_favoritas"], txt["aba_config"]
 ])
 
 # ABA 1: CHAT INTELIGENTE
@@ -202,36 +224,35 @@ with aba_chat:
     st.markdown(f"## {txt['titulo_chat']}")
     st.caption(txt["sub_chat"])
     st.divider()
-
+    
     for message in st.session_state.messages:
         if message["role"] == "system":
             continue
         avatar = "👤" if message["role"] == "user" else "🧑‍🍳"
         with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
-
+            
     if prompt_usuario := st.chat_input(txt["input_chat"]):
         with st.chat_message("user", avatar="👤"):
             st.markdown(prompt_usuario)
-
+            
         prompt_final = f"{prompt_usuario} [Responda obrigatoriamente em {st.session_state.idioma}]. [Estilo de escrita: {st.session_state.modo_resposta}]."
         if dieta:
             prompt_final += f" [Restrições: {', '.join(dieta)}]."
-
+            
         st.session_state.messages.append({"role": "user", "content": prompt_final})
-
+        
         with st.chat_message("assistant", avatar="🧑‍🍳"):
             placeholder_resposta = st.empty()
             with st.spinner(txt["chef_pensando"]):
                 try:
-                    # Mapeamento 100% seguro por strings puras aceitas pela API do g4f
                     if "GPT-4" in modelo_selecionado:
                         modelo_string = "gpt-4"
                     elif "GPT-3.5" in modelo_selecionado:
                         modelo_string = "gpt-3.5-turbo"
                     else:
                         modelo_string = "gpt-4o"
-
+                    
                     resposta_ia = g4f.ChatCompletion.create(
                         model=modelo_string,
                         messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
@@ -250,7 +271,7 @@ with aba_compras:
         if novo_item:
             st.session_state.lista_compras.append(novo_item)
             st.rerun()
-
+            
     for indice, item in enumerate(st.session_state.lista_compras):
         col_t, col_b = st.columns([5, 1])
         col_t.markdown(f"- {item}")
@@ -265,45 +286,66 @@ with aba_financeiro:
     c_ing = st.number_input("Ingredientes (R$):", min_value=0.0, value=10.0)
     c_ad = st.number_input("Custos extras/gás (R$):", min_value=0.0, value=2.0)
     margem = st.slider("Lucro (%):", min_value=10, max_value=200, value=100)
-
+    
     total_c = c_ing + c_ad
-    venda = total_c + (total_c * (margem / 100))
+    venda = total_c + (total_c * (margem/100))
     st.metric("Preço de Venda Sugerido", f"R$ {venda:.2f}", f"Custo: R$ {total_c:.2f}")
 
-# ABA 4: UTILITÁRIOS & TIMER
+# ABA 4: UTILITÁRIOS & TIMER (CORRIGIDO PARA SESSÃO ONLINE)
 with aba_utilitarios:
-    st.markdown("## ⏱️ Cozinha Utils")
+    st.markdown("## ⏱️ Cozinha Utils & Timer")
     st.divider()
-    t_min = st.number_input("Minutos de cozimento:", min_value=1, value=1)
-    if st.button("🚀 Iniciar Alerta"):
+    
+    t_min = st.number_input("Minutos de cozimento:", min_value=1, max_value=120, value=1)
+    
+    if st.button("🚀 Iniciar Alerta Seguro"):
+        status_timer = st.empty()
         pb = st.progress(0)
-        for s in range(t_min * 60):
+        
+        total_segundos = t_min * 60
+        # Loop otimizado para não travar conexões websocket do Streamlit
+        for s in range(total_segundos):
             time.sleep(1)
-            pb.progress((s + 1) / (t_min * 60))
+            porcentagem = int((s + 1) / total_segundos * 100)
+            pb.progress(porcentagem)
+            status_timer.caption(f"Tempo decorrido: {s+1}s de {total_segundos}s")
+            
+        status_timer.success("🔔 Tempo Esgotado! Sua receita está pronta!")
         if st.session_state.notificacoes:
             st.toast("🔔 Receita Concluída!", icon="🍳")
         st.balloons()
 
-# ABA 5: LIVRO DE RECEITAS FAVORITAS
+# ABA 5: LIVRO DE RECEITAS FAVORITAS (CORRIGIDO COM ARQUIVO REAL)
 with aba_favoritas:
-    st.markdown("## ⭐ Livro de Favoritos")
+    st.markdown("## ⭐ Livro de Favoritos Permanente")
+    st.caption("As receitas salvas aqui ficam gravadas no servidor e não somem ao atualizar a página.")
     st.divider()
-    t_fav = st.text_input("Título:")
-    c_fav = st.text_area("Receita:")
-    if st.button("💾 Guardar"):
+    
+    t_fav = st.text_input("Título da Receita:")
+    c_fav = st.text_area("Passo a Passo / Ingredientes:")
+    
+    if st.button("💾 Guardar para Sempre"):
         if t_fav and c_fav:
-            st.session_state.receitas_salvas[t_fav] = c_fav
+            salvar_receita_no_arquivo(t_fav, c_fav)
+            st.success(f"Receita '{t_fav}' gravada com sucesso!")
+            time.sleep(1)
             st.rerun()
-
-    for k, v in st.session_state.receitas_salvas.items():
-        with st.expander(k):
-            st.write(v)
+            
+    st.markdown("### 📖 Suas Receitas Salvas")
+    receitas_permanentes = carregar_receitas()
+    
+    if not receitas_permanentes:
+        st.info("Nenhuma receita salva ainda. Adicione uma acima!")
+    else:
+        for k, v in receitas_permanentes.items():
+            with st.expander(f"📋 {k}"):
+                st.write(v)
 
 # ABA 6: CONFIGURAÇÕES AVANÇADAS
 with aba_config:
     st.markdown(f"## {txt['txt_config']}")
     st.divider()
-
+    
     st.markdown(f"### 🌐 Localização")
     novo_idioma = st.selectbox(
         txt["txt_idioma"],
@@ -314,9 +356,9 @@ with aba_config:
         st.session_state.idioma = novo_idioma
         st.session_state.messages = []
         st.rerun()
-
+        
     st.divider()
-
+    
     st.markdown("### 👁️ Acessibilidade & Texto")
     nova_fonte = st.select_slider(
         txt["txt_fonte"],
@@ -326,21 +368,20 @@ with aba_config:
     if nova_fonte != st.session_state.tamanho_fonte:
         st.session_state.tamanho_fonte = nova_fonte
         st.rerun()
-
+        
     st.divider()
-
+    
     st.markdown("### 🤖 Ajustes da Inteligência Artificial")
     novo_modo = st.radio(
         txt["txt_resposta"],
         ("Detalhado", "Direto", "Humorístico"),
-        index=0 if st.session_state.modo_resposta.startswith(
-            "Detalhado") else 1 if st.session_state.modo_resposta.startswith("Direto") else 2
+        index=0 if st.session_state.modo_resposta.startswith("Detalhado") else 1 if st.session_state.modo_resposta.startswith("Direto") else 2
     )
     if novo_modo != st.session_state.modo_resposta:
         st.session_state.modo_resposta = novo_modo
-
+        
     st.divider()
-
+    
     st.markdown("### 🔔 Alertas e Sistema")
     notif_check = st.checkbox(txt["txt_notif"], value=st.session_state.notificacoes)
     st.session_state.notificacoes = notif_check
