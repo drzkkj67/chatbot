@@ -13,7 +13,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Funções para persistência do Livro de Receitas em arquivo real
 ARQUIVO_RECEITAS = "receitas_salvas.txt"
 
 def carregar_receitas():
@@ -51,7 +50,7 @@ if "lista_compras" not in st.session_state:
     st.session_state.lista_compras = []
 
 # ==============================================================================
-# DESIGN E CUSTOMIZAÇÃO DE CSS AVANÇADO
+# DESIGN E CUSTOMIZAÇÃO DE CSS AVANÇADO (COM SUA CORREÇÃO)
 # ==============================================================================
 tamanho_px = "16px" if st.session_state.tamanho_fonte == "Normal" else "20px" if st.session_state.tamanho_fonte == "Grande" else "24px"
 
@@ -111,6 +110,17 @@ st.markdown(
         box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
         background-color: rgba(128, 128, 128, 0.03);
     }}
+    
+    /* Correção para ocultar o texto do ícone quebrado na barra lateral */
+    button[data-testid="collapse-sidebar-button"] {{
+        font-size: 0px !important;
+        color: transparent !important;
+    }}
+    button[data-testid="collapse-sidebar-button"]::before {{
+        content: "◀" !important;
+        font-size: 14px !important;
+        color: inherit !important;
+    }}
     </style>
     """,
     unsafe_allow_html=True
@@ -164,7 +174,7 @@ textos = {
         "aba_utilitarios": "⏱️ Temporizador",
         "aba_favoritas": "⭐ Libro de Recetas",
         "aba_config": "⚙️ Configuración",
-        "titulo_chat": "💬 Habla com o Chef",
+        "titulo_chat": "💬 Habla con el Chef",
         "sub_chat": "Solicite receitas personalizadas ou faça perguntas culinárias.",
         "btn_limpar": "🗑️ Limpar Conversación",
         "chef_pensando": "El Chef está escribiendo tu receta...",
@@ -260,7 +270,7 @@ with aba_chat:
                     placeholder_resposta.markdown(resposta_ia)
                     st.session_state.messages.append({"role": "assistant", "content": resposta_ia})
                 except Exception as e:
-                    placeholder_resposta.error(f"Error: {e}")
+                    placeholder_resposta.error(f"Não foi possível conectar ao Chef IA no momento. Detalhes: {e}")
 
 # ABA 2: LISTA DE COMPRAS
 with aba_compras:
@@ -291,7 +301,7 @@ with aba_financeiro:
     venda = total_c + (total_c * (margem/100))
     st.metric("Preço de Venda Sugerido", f"R$ {venda:.2f}", f"Custo: R$ {total_c:.2f}")
 
-# ABA 4: UTILITÁRIOS & TIMER (CORRIGIDO PARA SESSÃO ONLINE)
+# ABA 4: UTILITÁRIOS & TIMER
 with aba_utilitarios:
     st.markdown("## ⏱️ Cozinha Utils & Timer")
     st.divider()
@@ -303,7 +313,6 @@ with aba_utilitarios:
         pb = st.progress(0)
         
         total_segundos = t_min * 60
-        # Loop otimizado para não travar conexões websocket do Streamlit
         for s in range(total_segundos):
             time.sleep(1)
             porcentagem = int((s + 1) / total_segundos * 100)
@@ -315,7 +324,7 @@ with aba_utilitarios:
             st.toast("🔔 Receita Concluída!", icon="🍳")
         st.balloons()
 
-# ABA 5: LIVRO DE RECEITAS FAVORITAS (CORRIGIDO COM ARQUIVO REAL)
+# ABA 5: LIVRO DE RECEITAS FAVORITAS
 with aba_favoritas:
     st.markdown("## ⭐ Livro de Favoritos Permanente")
     st.caption("As receitas salvas aqui ficam gravadas no servidor e não somem ao atualizar a página.")
@@ -328,7 +337,7 @@ with aba_favoritas:
         if t_fav and c_fav:
             salvar_receita_no_arquivo(t_fav, c_fav)
             st.success(f"Receita '{t_fav}' gravada com sucesso!")
-            time.sleep(1)
+            time.sleep(0.5)
             st.rerun()
             
     st.markdown("### 📖 Suas Receitas Salvas")
